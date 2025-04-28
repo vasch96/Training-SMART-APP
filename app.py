@@ -53,8 +53,10 @@ reps = [
 ]
 
 daytypes = (
-    ["Day 1"] * (len(day1_exercises_session1) + len(day1_exercises_session2)) +
-    ["Day 2"] * (len(day2_exercises_session1) + len(day2_exercises_session2))
+    ["Session 1 Day 1"] * len(day1_exercises_session1) +
+    ["Session 2 Day 1"] * len(day1_exercises_session2) +
+    ["Session 1 Day 2"] * len(day2_exercises_session1) +
+    ["Session 2 Day 2"] * len(day2_exercises_session2)
 )
 
 initial_data = pd.DataFrame({
@@ -75,37 +77,48 @@ if 'history' not in st.session_state:
 if 'session_counter' not in st.session_state:
     st.session_state.session_counter = 0
 
-session_sequence = ["Day 1", "Day 2", "Day 1", "Day 2"]
+session_sequence = [
+    {"session": "Session 1", "day": "Day 1"},
+    {"session": "Session 2", "day": "Day 1"},
+    {"session": "Session 1", "day": "Day 2"},
+    {"session": "Session 2", "day": "Day 2"}
+]
 
-# --- Select Training Day ---
-training_day = session_sequence[st.session_state.session_counter % len(session_sequence)]
-st.subheader(f"Today's Training: {training_day}")
+current_session = session_sequence[st.session_state.session_counter % len(session_sequence)]
+session_label = f"{current_session['session']} {current_session['day']}"
+
+st.subheader(f"Today's Training: {session_label}")
 
 # --- Generate Today's Plan ---
 today = pd.Timestamp.now().strftime("%Y-%m-%d")
 session_records = []
 
-# Select exercise list based on current day type
-if training_day == "Day 1":
-    exercises_today = day1_exercises_session1 if st.session_state.session_counter % 4 < 2 else day1_exercises_session2
-else:
-    exercises_today = day2_exercises_session1 if st.session_state.session_counter % 4 < 2 else day2_exercises_session2
+# Select exercise list based on session and day
+type_key = f"{current_session['session']} {current_session['day']}"
+
+if type_key == "Session 1 Day 1":
+    exercises_today = day1_exercises_session1
+elif type_key == "Session 2 Day 1":
+    exercises_today = day1_exercises_session2
+elif type_key == "Session 1 Day 2":
+    exercises_today = day2_exercises_session1
+elif type_key == "Session 2 Day 2":
+    exercises_today = day2_exercises_session2
 
 for idx, exercise in enumerate(exercises_today):
     st.markdown(f"### {exercise}")
 
-    # Fetch last same day type history for this exercise
     history = st.session_state.history
-    last_same_day = history[(history["Exercise"] == exercise) & (history["DayType"] == training_day)]
+    last_same_session = history[(history["Exercise"] == exercise) & (history["DayType"] == type_key)]
 
-    if not last_same_day.empty:
-        last_weight = last_same_day.iloc[-1]["Weight"]
-        last_load = last_same_day.iloc[-1]["Load"]
+    if not last_same_session.empty:
+        last_weight = last_same_session.iloc[-1]["Weight"]
+        last_load = last_same_session.iloc[-1]["Load"]
     else:
         last_weight = 5.0
         last_load = 5.0 * 33
 
-    if training_day == "Day 1":
+    if current_session['day'] == "Day 1":
         proposed_weight = round(last_weight + 2.5, 1)
         reps = 33
     else:
@@ -114,7 +127,7 @@ for idx, exercise in enumerate(exercises_today):
 
     adjusted_weight = st.number_input(f"Adjust Weight (kg) for {exercise}", value=proposed_weight, step=0.5, key=f"adjusted_weight_{exercise}")
 
-    if training_day == "Day 1":
+    if current_session['day'] == "Day 1":
         reps = 33
     else:
         reps = int(np.ceil(last_load / adjusted_weight))
@@ -132,7 +145,7 @@ for idx, exercise in enumerate(exercises_today):
             "Weight": adjusted_weight,
             "Reps": reps,
             "Load": round(load, 1),
-            "DayType": training_day
+            "DayType": type_key
         })
 
 st.write("---")
