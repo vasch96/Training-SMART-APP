@@ -2,56 +2,103 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-# --- Hardcoded Past Exercise Names ---
-exercise_list = [
-    'Pulldown Wide',
-    'Pulldown Narrow',
-    'Cable Curl',
-    'Lying Dumbbell',
-    'Machine Preacher',
-    'Cable Rope',
-    'Dumbbell Lateral'
+# --- Define Exercises per Training Day ---
+day1_exercises_session1 = [
+    'Pulldown Wide', 'Pulldown Narrow', 'Cable Curl', 'Lying Dumbbell',
+    'Machine Preacher', 'Cable Rope', 'Dumbbell Lateral'
 ]
 
-st.title("Training Plan Based on Your Code (Auto-Updating_2)")
+day1_exercises_session2 = [
+    'Cable Underhand', 'Dumbbell Press', 'Machine Fly', 'Cable Fly',
+    'Triceps Overhead Rope', 'Cable Pushdown Bar', 'Cable Curl EZ', 'Cable Rope Face'
+]
 
-# --- Initialize Session State for history ---
+day2_exercises_session1 = [
+    'Pulldown Wide', 'Pulldown Narrow', 'Cable Curl', 'Lying Dumbbell',
+    'Machine Preacher', 'Cable Rope', 'Dumbbell Lateral'
+]
+
+day2_exercises_session2 = [
+    'Bench Incline', 'Dumbbell Fly', 'Machine Fly', 'Cable Underhand',
+    'Triceps Overhead Rope', 'Cable Pushdown Bar', 'Cable Curl EZ', 'Cable Rope Face'
+]
+
+# --- Create Initial History ---
+initial_data = pd.DataFrame({
+    "Date": [
+        "2024-04-01" for _ in day1_exercises_session1 +
+        ["2024-04-02"] * len(day1_exercises_session2) +
+        ["2024-04-03"] * len(day2_exercises_session1) +
+        ["2024-04-04"] * len(day2_exercises_session2)
+    ],
+    "Exercise": day1_exercises_session1 + day1_exercises_session2 + day2_exercises_session1 + day2_exercises_session2,
+    "Weight": [
+        90, 66, 27.5, 10, 32, 20, 7,  # Session 1 Day 1
+        10, 30, 25, 12.5, 17, 22.5, 25, 22.5,  # Session 2 Day 1
+        95, 70, 28.75, 10, 34, 21.25, 8,  # Session 1 Day 2
+        18, 18, 27.5, 7.5, 11.25, 23.75, 25, 28.75  # Session 2 Day 2
+    ],
+    "Reps": [
+        31, 35, 35, 37, 29, 25, 43,
+        44, 32, 26, 21, 31, 32, 30, 39,
+        31, 25, 34, 37, 23, 22, 39,
+        38, 37, 24, 34, 36, 33, 30, 40
+    ],
+    "Load": [],
+    "DayType": [
+        "Day 1" for _ in day1_exercises_session1 + day1_exercises_session2
+    ] + [
+        "Day 2" for _ in day2_exercises_session1 + day2_exercises_session2
+    ]
+})
+
+initial_data["Load"] = initial_data["Weight"] * initial_data["Reps"]
+
+st.title("Training Plan Based on Your Code (Session-by-Session)")
+
+# --- Initialize Session State for history and session counter ---
 if 'history' not in st.session_state:
-    st.session_state.history = pd.DataFrame(columns=["Date", "Exercise", "Weight", "Reps", "Load", "DayType"])
+    st.session_state.history = initial_data.copy()
+
+if 'session_counter' not in st.session_state:
+    st.session_state.session_counter = 0
+
+session_sequence = ["Day 1", "Day 2", "Day 1", "Day 2"]
 
 # --- Select Training Day ---
-training_day = st.radio("Select today's training type:", ("Day 1", "Day 2"))
-
-st.write("---")
+training_day = session_sequence[st.session_state.session_counter % len(session_sequence)]
+st.subheader(f"Today's Training: {training_day}")
 
 # --- Generate Today's Plan ---
 today = pd.Timestamp.now().strftime("%Y-%m-%d")
 session_records = []
 
-st.subheader(f"Today's Plan: {training_day}")
+# Select exercise list based on current day type
+if training_day == "Day 1":
+    exercises_today = day1_exercises_session1 if st.session_state.session_counter % 4 < 2 else day1_exercises_session2
+else:
+    exercises_today = day2_exercises_session1 if st.session_state.session_counter % 4 < 2 else day2_exercises_session2
 
-for idx, exercise in enumerate(exercise_list):
+for idx, exercise in enumerate(exercises_today):
     st.markdown(f"### {exercise}")
 
-    # Fetch last Day 1 weight for this exercise
+    # Fetch last same day type history for this exercise
     history = st.session_state.history
-    last_day1 = history[(history["Exercise"] == exercise) & (history["DayType"] == "Day 1")]
-    
-    if not last_day1.empty:
-        last_weight = last_day1.iloc[-1]["Weight"]
-        last_load = last_day1.iloc[-1]["Load"]
+    last_same_day = history[(history["Exercise"] == exercise) & (history["DayType"] == training_day)]
+
+    if not last_same_day.empty:
+        last_weight = last_same_day.iloc[-1]["Weight"]
+        last_load = last_same_day.iloc[-1]["Load"]
     else:
-        last_weight = 5.0  # default if no history
-        last_load = 5.0 * 33  # assuming 33 reps
+        last_weight = 5.0
+        last_load = 5.0 * 33
 
     if training_day == "Day 1":
         proposed_weight = round(last_weight + 2.5, 1)
         reps = 33
-        target_load = proposed_weight * reps
     else:
         proposed_weight = last_weight
         reps = int(np.ceil(last_load / proposed_weight))
-        target_load = proposed_weight * reps
 
     adjusted_weight = st.number_input(f"Adjust Weight (kg) for {exercise}", value=proposed_weight, step=0.5, key=f"adjusted_weight_{exercise}")
 
@@ -78,21 +125,26 @@ for idx, exercise in enumerate(exercise_list):
 
 st.write("---")
 
-# --- Save Today's Session ---
+# --- Save and Finish Buttons ---
 if st.button("Save Today's Session"):
     if session_records:
         new_session = pd.DataFrame(session_records)
         st.session_state.history = pd.concat([st.session_state.history, new_session], ignore_index=True)
         st.success("Today's session saved!")
+
+        st.subheader("Load Progress for Today's Exercises")
+        for record in session_records:
+            exercise_data = st.session_state.history[st.session_state.history["Exercise"] == record["Exercise"]]
+            if not exercise_data.empty:
+                st.line_chart(exercise_data.set_index("Date")["Load"], height=200, use_container_width=True)
+
+        if st.button("Finish Day"):
+            st.session_state.session_counter += 1
+            st.experimental_rerun()
     else:
         st.warning("No exercises marked as done yet!")
 
-# --- Plot Load Progress ---
+# --- Display Full History Table ---
 if not st.session_state.history.empty:
-    st.subheader("Load Progress Over Time")
-    exercises_done = st.session_state.history["Exercise"].unique()
-
-    for exercise in exercises_done:
-        exercise_data = st.session_state.history[st.session_state.history["Exercise"] == exercise]
-        if not exercise_data.empty:
-            st.line_chart(exercise_data.set_index("Date")["Load"], height=200, use_container_width=True)
+    st.subheader("Training History")
+    st.dataframe(st.session_state.history, use_container_width=True)
