@@ -79,6 +79,9 @@ if 'history' not in st.session_state:
 if 'session_counter' not in st.session_state:
     st.session_state.session_counter = 0
 
+if 'week_counter' not in st.session_state:
+    st.session_state.week_counter = 1  # Initialize week counter to 1
+
 if 'show_finish_button' not in st.session_state:
     st.session_state.show_finish_button = False
 
@@ -108,24 +111,6 @@ current_session = session_sequence[current_session_idx]
 session_label = f"{current_session['session']} {current_session['day']}"
 
 st.subheader(f"Today's Training: {session_label}")
-
-# --- Split reps into 4 or 5 sets, reduce reps progressively ---
-def split_reps_into_sets(total_reps):
-    min_reps_per_set = 6
-    max_reps_per_set = 12
-    # Decide the number of sets (4 or 5)
-    num_sets = 4 if total_reps <= 40 else 5
-    sets = []
-    
-    # Start with max reps in the first set
-    remaining_reps = total_reps
-    for i in range(num_sets):
-        # Reduce the reps progressively, ensuring minimum of 6 reps
-        reps_in_set = max(min_reps_per_set, remaining_reps - (num_sets - i - 1) * 2)  # Reducing reps as sets go on
-        sets.append(reps_in_set)
-        remaining_reps -= reps_in_set
-    
-    return sets
 
 # --- Generate Today's Plan ---
 today = pd.Timestamp.now().strftime("%Y-%m-%d")
@@ -170,10 +155,9 @@ for idx, exercise in enumerate(exercises_today):
     else:
         reps = int(np.ceil(last_load / adjusted_weight))
 
-    # Split the total reps into sets with 6 to 12 reps, and 4 or 5 sets
-    sets = split_reps_into_sets(reps)
-    
-    st.write(f"Plan: {adjusted_weight} kg x {len(sets)} sets of {sets} reps")
+    load = adjusted_weight * reps
+
+    st.write(f"Plan: {adjusted_weight} kg x {reps} reps = {round(load, 1)} kg*reps")
 
     done = st.checkbox("Done?", key=f"done_{exercise}")
 
@@ -200,7 +184,7 @@ if st.button("Save Today's Session"):
     else:
         st.warning("No exercises marked as done yet!")
 
-# --- Show Finish Day Button and Graphs ---
+# --- Show Finish Day Button and Graphs --- 
 if st.session_state.show_finish_button:
     st.subheader("Load Progress for Today's Exercises")
     for record in session_records:
@@ -210,8 +194,14 @@ if st.session_state.show_finish_button:
 
     if st.button("Finish Day"):
         st.session_state.session_counter += 1
+        # Increment week counter after completing Session 2 Day 2
+        if current_session['session'] == "Session 2" and current_session['day'] == "Day 2":
+            st.session_state.week_counter += 1
         st.session_state.show_finish_button = False
         st.success("Day finished! Please manually refresh the page (F5) to continue.")
+
+# --- Display Current Week ---
+st.write(f"Current Week: {st.session_state.week_counter}")
 
 # --- Display Full History Table ---
 if not st.session_state.history.empty:
