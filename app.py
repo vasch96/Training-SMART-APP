@@ -102,6 +102,7 @@ session_sequence = [
     {"session": "Session 2", "day": "Day 2"}
 ]
 
+# Fix to ensure the index is within bounds
 current_session_idx = (last_session_counter + 1) % len(session_sequence)
 current_session = session_sequence[current_session_idx]
 session_label = f"{current_session['session']} {current_session['day']}"
