@@ -70,12 +70,15 @@ initial_data = pd.DataFrame({
 
 st.title("Training Plan Based on Your Code (Session-by-Session)")
 
-# --- Initialize Session State for history and session counter ---
+# --- Initialize Session State ---
 if 'history' not in st.session_state:
     st.session_state.history = initial_data.copy()
 
 if 'session_counter' not in st.session_state:
     st.session_state.session_counter = 0
+
+if 'show_finish_button' not in st.session_state:
+    st.session_state.show_finish_button = False
 
 session_sequence = [
     {"session": "Session 1", "day": "Day 1"},
@@ -150,24 +153,28 @@ for idx, exercise in enumerate(exercises_today):
 
 st.write("---")
 
-# --- Save and Finish Buttons ---
+# --- Save Today's Session ---
 if st.button("Save Today's Session"):
     if session_records:
         new_session = pd.DataFrame(session_records)
         st.session_state.history = pd.concat([st.session_state.history, new_session], ignore_index=True)
         st.success("Today's session saved!")
-
-        st.subheader("Load Progress for Today's Exercises")
-        for record in session_records:
-            exercise_data = st.session_state.history[st.session_state.history["Exercise"] == record["Exercise"]]
-            if not exercise_data.empty:
-                st.line_chart(exercise_data.set_index("Date")["Load"], height=200, use_container_width=True)
-
-        if st.button("Finish Day"):
-            st.session_state.session_counter += 1
-            st.experimental_rerun()
+        st.session_state.show_finish_button = True
     else:
         st.warning("No exercises marked as done yet!")
+
+# --- Show Finish Day Button and Graphs ---
+if st.session_state.show_finish_button:
+    st.subheader("Load Progress for Today's Exercises")
+    for record in session_records:
+        exercise_data = st.session_state.history[st.session_state.history["Exercise"] == record["Exercise"]]
+        if not exercise_data.empty:
+            st.line_chart(exercise_data.set_index("Date")["Load"], height=200, use_container_width=True)
+
+    if st.button("Finish Day"):
+        st.session_state.session_counter += 1
+        st.session_state.show_finish_button = False
+        st.experimental_rerun()
 
 # --- Display Full History Table ---
 if not st.session_state.history.empty:
