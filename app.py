@@ -13,67 +13,88 @@ exercise_list = [
     'Dumbbell Lateral'
 ]
 
-st.title("Training Plan Based on Your Code")
+st.title("Training Plan Based on Your Code (Upgraded)")
+
+# --- Initialize Session State for history ---
+if 'history' not in st.session_state:
+    st.session_state.history = pd.DataFrame(columns=["Date", "Exercise", "Weight", "Reps", "Load", "DayType"])
 
 # --- User Input: Set New Week Day 1 Weights ---
 st.header("Set Day 1 Weights for This Week")
 
 weights_input = {}
 for exercise in exercise_list:
-    weight = st.number_input(f"Day 1 Weight for {exercise} (kg):", min_value=0.0, step=0.5)
+    weight = st.number_input(f"Day 1 Weight for {exercise} (kg):", min_value=0.0, step=0.5, key=f"weight_input_{exercise}")
     weights_input[exercise] = weight
 
 if st.button("Generate Plan"):
     st.write("---")
-    st.write("Select today's training type:")
-    training_day = st.radio("", ("Day 1", "Day 2"))
+    training_day = st.radio("Select today's training type:", ("Day 1", "Day 2"))
 
     st.write("---")
 
-    plan = []
-    for exercise in exercise_list:
+    today = pd.Timestamp.now().strftime("%Y-%m-%d")
+    session_records = []
+
+    st.subheader(f"Today's Plan: {training_day}")
+
+    for idx, exercise in enumerate(exercise_list):
+        st.markdown(f"### {exercise}")
         day1_weight = weights_input[exercise]
-        # Assume fixed Day 1 reps (e.g., 33 reps for all based on previous trend)
         day1_reps = 33
         day1_load = day1_weight * day1_reps
 
         if training_day == "Day 1":
-            suggested_weight = day1_weight
-            suggested_reps = day1_reps
-            suggested_load = day1_load
+            default_weight = day1_weight
+            default_reps = day1_reps
+            target_load = day1_load
         else:
-            previous_day1_weight = day1_weight - 2.5  # Simulate "previous week's weight" by minus 2.5kg
+            previous_day1_weight = day1_weight - 2.5
             if previous_day1_weight <= 0:
-                previous_day1_weight = 1  # Avoid division by zero or negative
-            suggested_weight = previous_day1_weight
-            suggested_reps = int(np.ceil(day1_load / suggested_weight))
-            suggested_load = suggested_weight * suggested_reps
+                previous_day1_weight = 1
+            default_weight = previous_day1_weight
+            default_reps = int(np.ceil(day1_load / default_weight))
+            target_load = default_weight * default_reps
 
-        plan.append({
-            'Exercise': exercise,
-            'Suggested Weight (kg)': suggested_weight,
-            'Suggested Reps': suggested_reps,
-            'Target Load (kg*reps)': round(suggested_load, 1)
-        })
+        adjusted_weight = st.number_input(f"Adjust Weight (kg) for {exercise}", value=default_weight, step=0.5, key=f"adjusted_weight_{exercise}")
 
-    plan_df = pd.DataFrame(plan)
+        if training_day == "Day 1":
+            reps = 33
+        else:
+            reps = int(np.ceil(target_load / adjusted_weight))
 
-    st.subheader(f"Today's Plan: {training_day}")
+        load = adjusted_weight * reps
 
-    # Add checkboxes to mark completed exercises
-    completed_exercises = []
+        st.write(f"Plan: {adjusted_weight} kg x {reps} reps = {round(load, 1)} kg*reps")
 
-    for idx, row in plan_df.iterrows():
-        col1, col2 = st.columns([4, 1])
-        with col1:
-            st.write(f"**{row['Exercise']}**: {row['Suggested Weight (kg)']} kg x {row['Suggested Reps']} reps (Target Load: {row['Target Load (kg*reps)']})")
-        with col2:
-            done = st.checkbox("Done", key=f"done_{idx}")
-            if done:
-                completed_exercises.append(row['Exercise'])
+        done = st.checkbox("Done?", key=f"done_{exercise}")
+
+        if done:
+            session_records.append({
+                "Date": today,
+                "Exercise": exercise,
+                "Weight": adjusted_weight,
+                "Reps": reps,
+                "Load": round(load, 1),
+                "DayType": training_day
+            })
 
     st.write("---")
-    st.success("Training plan generated using your custom rule! ✅")
 
-    if completed_exercises:
-        st.info(f"Exercises completed: {', '.join(completed_exercises)}")
+    if st.button("Save Today's Session"):
+        if session_records:
+            new_session = pd.DataFrame(session_records)
+            st.session_state.history = pd.concat([st.session_state.history, new_session], ignore_index=True)
+            st.success("Today's session saved!")
+        else:
+            st.warning("No exercises marked as done yet!")
+
+# --- Plot Load Progress ---
+if not st.session_state.history.empty:
+    st.subheader("Load Progress Over Time")
+    exercises_done = st.session_state.history["Exercise"].unique()
+
+    for exercise in exercises_done:
+        exercise_data = st.session_state.history[st.session_state.history["Exercise"] == exercise]
+        if not exercise_data.empty:
+            st.line_chart(exercise_data.set_index("Date")["Load"], height=200, use_container_width=True)
