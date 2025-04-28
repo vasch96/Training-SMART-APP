@@ -174,7 +174,7 @@ if st.session_state.show_finish_button:
     if st.button("Finish Day"):
         st.session_state.session_counter += 1
         st.session_state.show_finish_button = False
-        st.experimental_rerun()
+        st.success("Day finished! Please manually refresh the page (F5) to continue.")
 
 # --- Display Full History Table ---
 if not st.session_state.history.empty:
