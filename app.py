@@ -24,35 +24,47 @@ day2_exercises_session2 = [
 ]
 
 # --- Create Initial History ---
-initial_data = pd.DataFrame({
-    "Date": [
-        "2024-04-01" for _ in day1_exercises_session1 +
-        ["2024-04-02"] * len(day1_exercises_session2) +
-        ["2024-04-03"] * len(day2_exercises_session1) +
-        ["2024-04-04"] * len(day2_exercises_session2)
-    ],
-    "Exercise": day1_exercises_session1 + day1_exercises_session2 + day2_exercises_session1 + day2_exercises_session2,
-    "Weight": [
-        90, 66, 27.5, 10, 32, 20, 7,  # Session 1 Day 1
-        10, 30, 25, 12.5, 17, 22.5, 25, 22.5,  # Session 2 Day 1
-        95, 70, 28.75, 10, 34, 21.25, 8,  # Session 1 Day 2
-        18, 18, 27.5, 7.5, 11.25, 23.75, 25, 28.75  # Session 2 Day 2
-    ],
-    "Reps": [
-        31, 35, 35, 37, 29, 25, 43,
-        44, 32, 26, 21, 31, 32, 30, 39,
-        31, 25, 34, 37, 23, 22, 39,
-        38, 37, 24, 34, 36, 33, 30, 40
-    ],
-    "Load": [],
-    "DayType": [
-        "Day 1" for _ in day1_exercises_session1 + day1_exercises_session2
-    ] + [
-        "Day 2" for _ in day2_exercises_session1 + day2_exercises_session2
-    ]
-})
+dates = (
+    ["2024-04-01"] * len(day1_exercises_session1) +
+    ["2024-04-01"] * len(day1_exercises_session2) +
+    ["2024-04-02"] * len(day2_exercises_session1) +
+    ["2024-04-02"] * len(day2_exercises_session2)
+)
 
-initial_data["Load"] = initial_data["Weight"] * initial_data["Reps"]
+exercises = (
+    day1_exercises_session1 +
+    day1_exercises_session2 +
+    day2_exercises_session1 +
+    day2_exercises_session2
+)
+
+weights = [
+    90, 66, 27.5, 10, 32, 20, 7,
+    10, 30, 25, 12.5, 17, 22.5, 25, 22.5,
+    95, 70, 28.75, 10, 34, 21.25, 8,
+    18, 18, 27.5, 7.5, 11.25, 23.75, 25, 28.75
+]
+
+reps = [
+    31, 35, 35, 37, 29, 25, 43,
+    44, 32, 26, 21, 31, 32, 30, 39,
+    31, 25, 34, 37, 23, 22, 39,
+    38, 37, 24, 34, 36, 33, 30, 40
+]
+
+daytypes = (
+    ["Day 1"] * (len(day1_exercises_session1) + len(day1_exercises_session2)) +
+    ["Day 2"] * (len(day2_exercises_session1) + len(day2_exercises_session2))
+)
+
+initial_data = pd.DataFrame({
+    "Date": dates,
+    "Exercise": exercises,
+    "Weight": weights,
+    "Reps": reps,
+    "Load": np.array(weights) * np.array(reps),
+    "DayType": daytypes
+})
 
 st.title("Training Plan Based on Your Code (Session-by-Session)")
 
