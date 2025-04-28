@@ -65,7 +65,8 @@ initial_data = pd.DataFrame({
     "Weight": weights,
     "Reps": reps,
     "Load": np.array(weights) * np.array(reps),
-    "DayType": daytypes
+    "DayType": daytypes,
+    "SessionCounter": [0] * len(exercises)  # Initialize session counter as 0
 })
 
 st.title("Training Plan Based on Your Code (Session-by-Session)")
@@ -80,14 +81,25 @@ if 'session_counter' not in st.session_state:
 if 'show_finish_button' not in st.session_state:
     st.session_state.show_finish_button = False
 
+# --- Find Last Session and Progress ---
+last_session = st.session_state.history.iloc[-1] if not st.session_state.history.empty else None
+if last_session is not None:
+    # Get the last completed session type (session and day)
+    last_session_type = last_session['DayType']
+    last_session_counter = last_session['SessionCounter']
+else:
+    last_session_type = None
+    last_session_counter = -1
+
+# --- Determine Next Session ---
+current_session_idx = (last_session_counter + 1) % len(session_sequence)
 session_sequence = [
     {"session": "Session 1", "day": "Day 1"},
     {"session": "Session 2", "day": "Day 1"},
     {"session": "Session 1", "day": "Day 2"},
     {"session": "Session 2", "day": "Day 2"}
 ]
-
-current_session = session_sequence[st.session_state.session_counter % len(session_sequence)]
+current_session = session_sequence[current_session_idx]
 session_label = f"{current_session['session']} {current_session['day']}"
 
 st.subheader(f"Today's Training: {session_label}")
@@ -148,7 +160,8 @@ for idx, exercise in enumerate(exercises_today):
             "Weight": adjusted_weight,
             "Reps": reps,
             "Load": round(load, 1),
-            "DayType": type_key
+            "DayType": type_key,
+            "SessionCounter": current_session_idx  # Save session counter in history
         })
 
 st.write("---")
