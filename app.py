@@ -13,7 +13,7 @@ exercise_list = [
     'Dumbbell Lateral'
 ]
 
-st.title("Training Plan Based on Your Code (Auto-Updating_1)")
+st.title("Training Plan Based on Your Code (Auto-Updating_2)")
 
 # --- Initialize Session State for history ---
 if 'history' not in st.session_state:
