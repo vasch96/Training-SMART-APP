@@ -109,20 +109,22 @@ session_label = f"{current_session['session']} {current_session['day']}"
 
 st.subheader(f"Today's Training: {session_label}")
 
-# --- Split reps into sets with a minimum of 6 reps and maximum of 12 reps per set ---
+# --- Split reps into 4 or 5 sets, reduce reps progressively ---
 def split_reps_into_sets(total_reps):
     min_reps_per_set = 6
     max_reps_per_set = 12
+    # Decide the number of sets (4 or 5)
+    num_sets = 4 if total_reps <= 40 else 5
     sets = []
     
-    # Start dividing reps into sets
-    while total_reps > 0:
-        if total_reps > max_reps_per_set:
-            sets.append(max_reps_per_set)
-            total_reps -= max_reps_per_set
-        else:
-            sets.append(total_reps)
-            break
+    # Start with max reps in the first set
+    remaining_reps = total_reps
+    for i in range(num_sets):
+        # Reduce the reps progressively, ensuring minimum of 6 reps
+        reps_in_set = max(min_reps_per_set, remaining_reps - (num_sets - i - 1) * 2)  # Reducing reps as sets go on
+        sets.append(reps_in_set)
+        remaining_reps -= reps_in_set
+    
     return sets
 
 # --- Generate Today's Plan ---
@@ -168,7 +170,7 @@ for idx, exercise in enumerate(exercises_today):
     else:
         reps = int(np.ceil(last_load / adjusted_weight))
 
-    # Split the total reps into sets with 6 to 12 reps
+    # Split the total reps into sets with 6 to 12 reps, and 4 or 5 sets
     sets = split_reps_into_sets(reps)
     
     st.write(f"Plan: {adjusted_weight} kg x {len(sets)} sets of {sets} reps")
