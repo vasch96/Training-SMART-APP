@@ -13,81 +13,79 @@ exercise_list = [
     'Dumbbell Lateral'
 ]
 
-st.title("Training Plan Based on Your Code (Upgraded)")
+st.title("Training Plan Based on Your Code (Auto-Updating_1)")
 
 # --- Initialize Session State for history ---
 if 'history' not in st.session_state:
     st.session_state.history = pd.DataFrame(columns=["Date", "Exercise", "Weight", "Reps", "Load", "DayType"])
 
-# --- User Input: Set New Week Day 1 Weights ---
-st.header("Set Day 1 Weights for This Week")
+# --- Select Training Day ---
+training_day = st.radio("Select today's training type:", ("Day 1", "Day 2"))
 
-weights_input = {}
-for exercise in exercise_list:
-    weight = st.number_input(f"Day 1 Weight for {exercise} (kg):", min_value=0.0, step=0.5, key=f"weight_input_{exercise}")
-    weights_input[exercise] = weight
+st.write("---")
 
-if st.button("Generate Plan"):
-    st.write("---")
-    training_day = st.radio("Select today's training type:", ("Day 1", "Day 2"))
+# --- Generate Today's Plan ---
+today = pd.Timestamp.now().strftime("%Y-%m-%d")
+session_records = []
 
-    st.write("---")
+st.subheader(f"Today's Plan: {training_day}")
 
-    today = pd.Timestamp.now().strftime("%Y-%m-%d")
-    session_records = []
+for idx, exercise in enumerate(exercise_list):
+    st.markdown(f"### {exercise}")
 
-    st.subheader(f"Today's Plan: {training_day}")
+    # Fetch last Day 1 weight for this exercise
+    history = st.session_state.history
+    last_day1 = history[(history["Exercise"] == exercise) & (history["DayType"] == "Day 1")]
+    
+    if not last_day1.empty:
+        last_weight = last_day1.iloc[-1]["Weight"]
+        last_load = last_day1.iloc[-1]["Load"]
+    else:
+        last_weight = 5.0  # default if no history
+        last_load = 5.0 * 33  # assuming 33 reps
 
-    for idx, exercise in enumerate(exercise_list):
-        st.markdown(f"### {exercise}")
-        day1_weight = weights_input[exercise]
-        day1_reps = 33
-        day1_load = day1_weight * day1_reps
+    if training_day == "Day 1":
+        proposed_weight = round(last_weight + 2.5, 1)
+        reps = 33
+        target_load = proposed_weight * reps
+    else:
+        proposed_weight = last_weight
+        reps = int(np.ceil(last_load / proposed_weight))
+        target_load = proposed_weight * reps
 
-        if training_day == "Day 1":
-            default_weight = day1_weight
-            default_reps = day1_reps
-            target_load = day1_load
-        else:
-            previous_day1_weight = day1_weight - 2.5
-            if previous_day1_weight <= 0:
-                previous_day1_weight = 1
-            default_weight = previous_day1_weight
-            default_reps = int(np.ceil(day1_load / default_weight))
-            target_load = default_weight * default_reps
+    adjusted_weight = st.number_input(f"Adjust Weight (kg) for {exercise}", value=proposed_weight, step=0.5, key=f"adjusted_weight_{exercise}")
 
-        adjusted_weight = st.number_input(f"Adjust Weight (kg) for {exercise}", value=default_weight, step=0.5, key=f"adjusted_weight_{exercise}")
+    if training_day == "Day 1":
+        reps = 33
+    else:
+        reps = int(np.ceil(last_load / adjusted_weight))
 
-        if training_day == "Day 1":
-            reps = 33
-        else:
-            reps = int(np.ceil(target_load / adjusted_weight))
+    load = adjusted_weight * reps
 
-        load = adjusted_weight * reps
+    st.write(f"Plan: {adjusted_weight} kg x {reps} reps = {round(load, 1)} kg*reps")
 
-        st.write(f"Plan: {adjusted_weight} kg x {reps} reps = {round(load, 1)} kg*reps")
+    done = st.checkbox("Done?", key=f"done_{exercise}")
 
-        done = st.checkbox("Done?", key=f"done_{exercise}")
+    if done:
+        session_records.append({
+            "Date": today,
+            "Exercise": exercise,
+            "Weight": adjusted_weight,
+            "Reps": reps,
+            "Load": round(load, 1),
+            "DayType": training_day
+        })
 
-        if done:
-            session_records.append({
-                "Date": today,
-                "Exercise": exercise,
-                "Weight": adjusted_weight,
-                "Reps": reps,
-                "Load": round(load, 1),
-                "DayType": training_day
-            })
+st.write("---")
 
-    st.write("---")
-
-    if st.button("Save Today's Session"):
-        if session_records:
-            new_session = pd.DataFrame(session_records)
-            st.session_state.history = pd.concat([st.session_state.history, new_session], ignore_index=True)
-            st.success("Today's session saved!")
-        else:
-            st.warning("No exercises marked as done yet!")
+# --- Save Today's Session ---
+if st.button("Save Today's Session"):
+    if session_records:
+        new_session = pd.DataFrame(session_records)
+        st.session_state.history = pd.concat([st.session_state.history, new_session], ignore_index=True)
+        st.success("Today's session saved!")
+    else:
+        st.warning("No exercises marked as done yet!")
 
 # --- Plot Load Progress ---
 if not st.session_state.history.empty:
