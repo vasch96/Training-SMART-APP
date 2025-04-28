@@ -109,6 +109,22 @@ session_label = f"{current_session['session']} {current_session['day']}"
 
 st.subheader(f"Today's Training: {session_label}")
 
+# --- Split reps into sets with a minimum of 6 reps and maximum of 12 reps per set ---
+def split_reps_into_sets(total_reps):
+    min_reps_per_set = 6
+    max_reps_per_set = 12
+    sets = []
+    
+    # Start dividing reps into sets
+    while total_reps > 0:
+        if total_reps > max_reps_per_set:
+            sets.append(max_reps_per_set)
+            total_reps -= max_reps_per_set
+        else:
+            sets.append(total_reps)
+            break
+    return sets
+
 # --- Generate Today's Plan ---
 today = pd.Timestamp.now().strftime("%Y-%m-%d")
 session_records = []
@@ -152,9 +168,10 @@ for idx, exercise in enumerate(exercises_today):
     else:
         reps = int(np.ceil(last_load / adjusted_weight))
 
-    load = adjusted_weight * reps
-
-    st.write(f"Plan: {adjusted_weight} kg x {reps} reps = {round(load, 1)} kg*reps")
+    # Split the total reps into sets with 6 to 12 reps
+    sets = split_reps_into_sets(reps)
+    
+    st.write(f"Plan: {adjusted_weight} kg x {len(sets)} sets of {sets} reps")
 
     done = st.checkbox("Done?", key=f"done_{exercise}")
 
