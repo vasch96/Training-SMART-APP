@@ -59,6 +59,7 @@ daytypes = (
     ["Session 2 Day 2"] * len(day2_exercises_session2)
 )
 
+# Adding SessionCounter field in initial data to prevent KeyError
 initial_data = pd.DataFrame({
     "Date": dates,
     "Exercise": exercises,
@@ -82,8 +83,10 @@ if 'show_finish_button' not in st.session_state:
     st.session_state.show_finish_button = False
 
 # --- Find Last Session and Progress ---
+# Fix to safely check for the last session in history
 last_session = st.session_state.history.iloc[-1] if not st.session_state.history.empty else None
-if last_session is not None:
+
+if last_session is not None and 'SessionCounter' in last_session:
     # Get the last completed session type (session and day)
     last_session_type = last_session['DayType']
     last_session_counter = last_session['SessionCounter']
@@ -92,13 +95,14 @@ else:
     last_session_counter = -1
 
 # --- Determine Next Session ---
-current_session_idx = (last_session_counter + 1) % len(session_sequence)
 session_sequence = [
     {"session": "Session 1", "day": "Day 1"},
     {"session": "Session 2", "day": "Day 1"},
     {"session": "Session 1", "day": "Day 2"},
     {"session": "Session 2", "day": "Day 2"}
 ]
+
+current_session_idx = (last_session_counter + 1) % len(session_sequence)
 current_session = session_sequence[current_session_idx]
 session_label = f"{current_session['session']} {current_session['day']}"
 
